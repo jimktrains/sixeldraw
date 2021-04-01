@@ -1,8 +1,10 @@
 # sixeldraw
 
-Sixel-based drawing program.
+[Sixel](https://en.wikipedia.org/wiki/Sixel)-based drawing program.
 
 Use the cursor to move around. Controls are listed at the bottom of the screen.
+
+Requires a terminal editor capable of displaying sixel graphics.
 
 ## TODO
 
