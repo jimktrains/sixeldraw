@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+
+from easyansi import screen
+from easyansi import cursor
+from easyansi import attributes
+import sys
+import tty
+import termios
+
+fd = sys.stdin.fileno()
+
+old_settings = termios.tcgetattr(fd)
+try:
+    tty.setraw(fd)
+
+    screen.clear()
+
+    x = 0
+    y = 1
+
+    ssize = screen.get_size()
+
+    horz = int(ssize[0]/2)
+    vert = ssize[1]-1
+
+    horz = 24
+    vert = 12
+
+    vert = int(vert/6)*6
+
+    data = [[' ' for _ in range(vert)] for _ in range(horz)]
+
+    def redraw():
+        screen.clear()
+        for i in range(horz):
+            for j in range(vert):
+                cursor.locate(i,j)
+                screen.prnt(data[i][j])
+
+    def flood_fill(i,j, f):
+        flood_fill_hs(range(i, -1, -1), range(j, -1, -1), f)
+        flood_fill_hs(range(i+1, horz),range(j, -1, -1), f)
+        flood_fill_hs(range(i, -1, -1), range(j+1, vert), f)
+        flood_fill_hs(range(i+1, horz),range(j+1, vert), f)
+
+    def flood_fill_hs(ri,rj,f):
+        for dj in rj:
+            first = False
+            for di in ri:
+                if not first:
+                    if data[di][dj] == '*':
+                        return 
+                    first = True
+
+                if data[di][dj] == '*':
+                    break
+                if f(di,dj):
+                    data[di][dj] = '*';
+                    cursor.locate(di,dj)
+                    screen.prnt(data[di][dj])
+
+    pen = True
+    eraser = False
+
+    cursor.show()
+
+    while True:
+        cursor.locate(x,y)
+        i = sys.stdin.read(1)
+        if i == 'q':
+            break
+        if i == 'c':
+            data = [[' ' for _ in range(vert)] for _ in range(horz)]
+            redraw()
+        elif i == 'p':
+            pen = not pen
+            eraser = False
+        elif i == 'e':
+            pen = False
+            eraser = not eraser
+        elif i == "f":
+            cursor.locate(0,ssize[1])
+            cursor.previous_line(14)
+            screen.prnt("1=tight horizontal stripe ")
+            cursor.next_line()
+            screen.prnt("2=spaced horizontal stripe ")
+            cursor.next_line()
+            screen.prnt("3=tight vertical stripe ")
+            cursor.next_line()
+            screen.prnt("4=spaced vertical stripe ")
+            cursor.next_line()
+            screen.prnt("5=spaced dots ")
+            cursor.next_line()
+            screen.prnt("6=tight dots ")
+            cursor.next_line()
+            screen.prnt("7=forward slash ")
+            cursor.next_line()
+            screen.prnt("8=back slash ")
+            cursor.next_line()
+            screen.prnt("9=heart")
+            cursor.next_line()
+            screen.prnt("0=star")
+            cursor.next_line()
+            screen.prnt("f=fill")
+            cursor.next_line()
+            screen.prnt("w=wave")
+            cursor.next_line()
+            screen.prnt("l=left arrow")
+            cursor.next_line()
+            screen.prnt("r=right arrow")
+            i = sys.stdin.read(1)
+            fill_raster = [""]
+            if i == "1":
+                fill_raster = ["*" ,
+                               " ",
+                               "*",
+                               " ",
+                               ]
+            elif i == "2":
+                fill_raster = ["*" ,
+                               " "
+                               " ",
+                               "*",
+                               " ",
+                               " ",
+                               ]
+            elif i == "3":
+                fill_raster = [" * ",
+                               " * ",
+                               ]
+            elif i == "4":
+                fill_raster = ["  *  ",
+                               "  *  ",
+                               ]
+            elif i == "5":
+                fill_raster = ["*   ",
+                               "  * ",
+                               ]
+            elif i == "6":
+                fill_raster = ["* ",
+                               " *",
+                               ]
+            elif i == "7":
+                fill_raster = ["*  ",
+                               " * ",
+                               "  *"]
+            elif i == "8":
+                fill_raster = ["*  ",
+                               "  *",
+                               " * "]
+            elif i == "9":
+                fill_raster = [
+                               "  **  **  ",
+                               " ******** ",
+                               "  ******  ",
+                               "   ****   ",
+                               "    **    ",
+                               "          "]
+            elif i == "0":
+                fill_raster = [
+                        "  **  **  ",
+                        "   ****   ",
+                        " ******** ",
+                        "   ****   ",
+                        "  **  **  ",
+                        "          ", 
+                        ]
+            elif i == "l":
+                fill_raster = [
+                        "  **        ",
+                        " ***        ",
+                        "**********  ",
+                        " ***        ",
+                        "  **        ", 
+                        "            ", 
+                        ]
+            elif i == "r":
+                fill_raster = [
+                        "            ",
+                        "        **  ",
+                        "        *** ",
+                        "  **********",
+                        "        *** ",
+                        "        **  ",
+                        ]
+            elif i == "w":
+                fill_raster = [
+                        "    ****    ",
+                        "   *    *   ",
+                        "***      ***",
+                        "            ",
+                        ]
+            elif i == "f":
+                fill_raster = ["*"]
+
+            def raster_fill(i,j):
+                hsize = len(fill_raster[0])
+                vsize = len(fill_raster)
+
+                return fill_raster[j % vsize][i % hsize] == "*"
+
+            flood_fill(x,y, raster_fill)
+            redraw()
+        elif i == "d":
+            data[x][y] = '*'
+            cursor.locate(x,y)
+            screen.prnt(data[x][y])
+        elif i == "D":
+            data[x][y] = ' '
+            cursor.locate(x,y)
+            screen.prnt(data[x][y])
+        elif i == "r":
+            redraw()
+        elif i == "\x1b":
+            i = sys.stdin.read(1)
+            if i == '[':
+                i = sys.stdin.read(1)
+                if i == "D": #left
+                    x = max(0, x-1)
+                elif i == "A": #up
+                    y = max(0, y-1) 
+                elif i == "C": # right 
+                    x = min(horz-1, x+1)
+                elif i == "B": #down
+                    y = min(vert-1, y+1)
+
+                if pen:
+                    data[x][y] = '*'
+                elif eraser:
+                    data[x][y] = ' '
+                cursor.locate(x,y)
+                screen.prnt(data[x][y])
+
+        cursor.locate(0,ssize[1])
+        screen.prnt(f"[{x:03},{y:03}]  ")
+        screen.prnt("p=")
+        if pen:
+            attributes.reverse()
+        screen.prnt("Pen")
+        attributes.reverse_off()
+
+        screen.prnt(" ")
+
+        screen.prnt("e=")
+        if eraser:
+            attributes.reverse()
+        screen.prnt("Eraser")
+        attributes.reverse_off()
+
+        screen.prnt(" d=dot D=erase dot r=redraw c=clear f=fill q=Exit")
+
+        cursor.hide()
+
+        esc = ""
+        glines = []
+        for j in range(0, vert, 3):
+            buf = ""
+            for i in range(horz):
+                accum = 0
+                for s in range(3):
+                    if data[i][j+s] == '*':
+                        accum += 1<<(2*s)
+                        accum += 1<<((2*s)+1)
+                buf += chr(63+accum)
+            glines.append(buf)
+
+        clearer = "!" + str(len(glines[0])) + "~"
+        clearer_lines = [clearer for _ in glines]
+
+        sixel = (esc + "P;0;1;q#0" + "-".join(clearer_lines) + esc + "\\")
+
+        cursor.locate(horz+1, 0)
+        screen.prnt(sixel)
+
+        cursor.locate(horz+1, 10)
+        screen.prnt(esc + "P;0;1;q#0");
+        row = '-'.join([line * 4 for line in clearer_lines])
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(esc + "\\");
+
+        sixel = (esc + "P;0;1;q#2" + "-".join(glines) + esc + "\\")
+        cursor.locate(horz+1, 0)
+        screen.prnt(sixel)
+
+        cursor.locate(horz+1, 10)
+        screen.prnt(esc + "P;0;1;q#2");
+        row = '-'.join([line * 4 for line in glines])
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(row + "-")
+        screen.prnt(esc + "\\");
+
+        cursor.show()
+
+finally:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
